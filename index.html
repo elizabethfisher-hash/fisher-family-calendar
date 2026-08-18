@@ -430,6 +430,42 @@ function dayEntries(dt){
   return arr;
 }
 
+function resolveMonth(t){
+  const today=new Date(); today.setHours(0,0,0,0);
+  if(/next month/.test(t)) return {y: today.getMonth()===11?today.getFullYear()+1:today.getFullYear(), m:(today.getMonth()+1)%12};
+  if(/this month/.test(t)) return {y:today.getFullYear(), m:today.getMonth()};
+  for(const [name,idx] of Object.entries(MONTHS)){
+    if(new RegExp("\\b"+name+"\\b").test(t)){
+      const yrMatch=t.match(/\b(20\d{2})\b/);
+      return {y: yrMatch?parseInt(yrMatch[1],10):pickYear(idx,1), m:idx};
+    }
+  }
+  return null;
+}
+function isFree(dt){ // family-free: Marc off, nothing scheduled
+  const y=dt.getFullYear(),m=dt.getMonth(),d=dt.getDate();
+  return !isWork(y,m,d) && getEvents(y,m,d).length===0;
+}
+function freeWeekendDays(y,m){
+  const out=[]; const days=new Date(y,m+1,0).getDate();
+  for(let d=1;d<=days;d++){ const dt=new Date(y,m,d);
+    if(dt.getDay()!==0 && dt.getDay()!==6) continue;
+    if(isFree(dt)) out.push(dt);
+  }
+  return out;
+}
+function freeFullWeekends(y,m){
+  const out=[]; const days=new Date(y,m+1,0).getDate();
+  for(let d=1;d<=days;d++){ const dt=new Date(y,m,d); if(dt.getDay()!==6) continue;
+    const sun=new Date(y,m,d+1);
+    if(isFree(dt) && isFree(sun)) out.push([dt,sun]);
+  }
+  return out;
+}
+function freeEvenings(range){
+  return range.filter(dt=> dt.getDay()!==3 && isFree(dt)); // no gym, Marc off, nothing scheduled
+}
+
 function monthRollup(t){
   // needs a month name + Marc + a list-style question
   let mo=null;
@@ -553,6 +589,45 @@ function respond(text){
     return;
   }
 
+  // free weekends in a month: "what weekends are free in September?" / "weekend days free next month?"
+  if(/weekend/.test(t) && /\b(free|open|available)\b/.test(t) && resolveMonth(t)){
+    const {y,m}=resolveMonth(t);
+    const monLabel=new Intl.DateTimeFormat('en-US',{month:'long',year:'numeric'}).format(new Date(y,m,1));
+    if(/weekend day/.test(t) || /\bdays\b/.test(t)){
+      const days=freeWeekendDays(y,m);
+      render({title:"Free weekend days — "+monLabel, verdict: days.length?days.length+" day"+(days.length>1?"s":""):"None", vclass: days.length?"yes":"neutral",
+        items: days.length ? days.map(d=>({cls:'off', html: fmt.format(d)})) : [{cls:'none', html:"No completely free weekend days that month"}]});
+    } else {
+      const wks=freeFullWeekends(y,m);
+      render({title:"Free weekends — "+monLabel, verdict: wks.length?wks.length+" weekend"+(wks.length>1?"s":""):"None", vclass: wks.length?"yes":"neutral",
+        items: wks.length ? wks.map(w=>({cls:'off', html: fmtShort.format(w[0])+" – "+fmtShort.format(w[1])+" — both days free 🎉"})) : [{cls:'none', html:"No fully-free weekends that month"}]});
+    }
+    return;
+  }
+
+  // free evenings: "what evenings are free next week / next weekend?"
+  if(/evening/.test(t)){
+    const today=new Date(); let range=[], label='';
+    if(/weekend/.test(t)){
+      const [sat,sun]=thisWeekend(today);
+      if(/next/.test(t)){ sat.setDate(sat.getDate()+7); sun.setDate(sun.getDate()+7); }
+      range=[sat,sun]; label=(/next/.test(t)?'next':'this')+' weekend';
+    } else if(resolveMonth(t) && /month/.test(t)){
+      const {y,m}=resolveMonth(t); const days=new Date(y,m+1,0).getDate();
+      for(let d=1;d<=days;d++) range.push(new Date(y,m,d));
+      label=new Intl.DateTimeFormat('en-US',{month:'long'}).format(new Date(y,m,1));
+    } else {
+      const offset=/next/.test(t)?1:0;
+      const mon=startOfWeek(today); mon.setDate(mon.getDate()+7*offset);
+      for(let i=0;i<7;i++){ const d=new Date(mon); d.setDate(mon.getDate()+i); range.push(d); }
+      label=(offset?'next':'this')+' week';
+    }
+    const free=freeEvenings(range);
+    render({title:"Free evenings — "+label, verdict: free.length?free.length+" evening"+(free.length>1?"s":""):"None", vclass: free.length?"yes":"neutral",
+      items: free.length ? free.map(d=>({cls:'off', html: fmtShort.format(d)+" — free evening"})) : [{cls:'none', html:"No free evenings "+label}]});
+    return;
+  }
+
   // agenda: "what's on this week / weekend?" / "next week?"
   if(/\b(this|next)\s+(week|weekend)\b/.test(t)){
     const offset=/next/.test(t)?1:0;
@@ -643,6 +718,8 @@ const EXAMPLES=[
   "Is Marc off this weekend?",
   "When is Marc's next weekend off?",
   "What's on this week?",
+  "What weekends are free in September?",
+  "What evenings are free next week?",
   "What Fridays is Marc off in December?",
   "When is Jack's birthday?",
   "What's the next free day everyone has?",
