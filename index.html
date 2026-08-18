@@ -294,6 +294,47 @@ function answerForDate(dt, mode){
   return {title:fmt.format(dt), verdict, vclass, items};
 }
 
+/* index every named event across the calendar window for name/holiday lookups */
+function buildEventIndex(){
+  const out=[]; const d=new Date(2026,6,1); const end=new Date(2027,11,31);
+  while(d<=end){
+    getEvents(d.getFullYear(),d.getMonth(),d.getDate()).forEach(ev=>out.push({date:new Date(d.getFullYear(),d.getMonth(),d.getDate()), label:ev}));
+    d.setDate(d.getDate()+1);
+  }
+  return out;
+}
+const EVENT_INDEX = buildEventIndex();
+const STOP=new Set(["what","whats","when","whens","which","whose","who","does","do","is","are","the","day","days","week","fall","falls","on","of","in","this","that","year","and","for","a","an","to","how","about","tell","me"]);
+function eventLookup(t){
+  const tokens = t.toLowerCase().replace(/[^a-z\s']/g,' ').split(/\s+/)
+    .map(w=>w.replace(/'s$/,'').replace(/[^a-z]/g,''))
+    .filter(w=>w.length>2 && !STOP.has(w));
+  if(!tokens.length) return null;
+  const matches = tk => e => { const l=e.label.toLowerCase();
+    return l.includes(tk) || (tk.length>4 && tk.endsWith('s') && l.includes(tk.slice(0,-1))); };
+  const scored = EVENT_INDEX.map(e=>({e, s: tokens.filter(tk=>matches(tk)(e)).length})).filter(x=>x.s>0);
+  if(!scored.length) return null;
+  const max=Math.max(...scored.map(x=>x.s));
+  const best=scored.filter(x=>x.s===max).map(x=>x.e);
+  // one date per distinct label — prefer the next upcoming occurrence
+  const today=new Date(); today.setHours(0,0,0,0);
+  const byLabel={};
+  best.forEach(e=>{ const k=e.label;
+    if(!byLabel[k]) byLabel[k]=e;
+    else{ const cur=byLabel[k];
+      const eF=e.date>=today, cF=cur.date>=today;
+      if(eF&&!cF) byLabel[k]=e;
+      else if(eF===cF && e.date<cur.date) byLabel[k]=e; }
+  });
+  const results=Object.values(byLabel).sort((a,b)=>a.date-b.date).slice(0,6);
+  if(results.length===1){
+    const r=results[0];
+    return {title:r.label, verdict:fmt.format(r.date), vclass:"neutral", items:[]};
+  }
+  return {title:"Matching dates", verdict:results.length+" found", vclass:"neutral",
+    items: results.map(r=>({cls:'', html:r.label+" — "+fmt.format(r.date)}))};
+}
+
 function monthRollup(t){
   // needs a month name + Marc + a list-style question
   let mo=null;
@@ -388,6 +429,8 @@ function respond(text){
 
   const dt=parseDate(t);
   if(!dt){
+    const look=eventLookup(t);
+    if(look){ render(look); return; }
     render({title:"I didn't catch a date", verdict:"Try a specific day", vclass:"neutral",
       items:[{cls:'none',html:"e.g. \"Are you free on Feb 13, 2027?\""},
              {cls:'none',html:"e.g. \"Do the kids have school next Tuesday?\""},
@@ -423,8 +466,9 @@ const EXAMPLES=[
   "Do the kids have school next Tuesday?",
   "When is spring break?",
   "What Fridays is Marc off in December?",
+  "When is Jack's birthday?",
+  "What day of the week is Christmas?",
   "When is winter break?",
-  "What's happening on July 7, 2026?",
 ];
 const exWrap=document.getElementById('examples');
 EXAMPLES.forEach(x=>{
