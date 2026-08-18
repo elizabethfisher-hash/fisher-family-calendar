@@ -54,6 +54,18 @@
   .answer li.work::before{ background:#0070C0; }
   .answer li.off::before{ background:#1f8a4c; }
   .answer li.none::before{ background:#c9d4d4; }
+
+  .help-toggle{ margin-top:20px; background:none; color:#2b6b6b; border:none;
+    padding:0; font-size:14px; font-weight:700; cursor:pointer; }
+  .help-toggle:hover{ background:none; text-decoration:underline; }
+  .help{ display:none; margin-top:14px; border:1px solid #e4ecec; border-radius:12px;
+    padding:16px 18px 6px; background:#fafcfc; }
+  .help-group{ margin-bottom:14px; }
+  .help-group h4{ font-size:13px; text-transform:uppercase; letter-spacing:.5px;
+    color:#4AADAD; margin-bottom:6px; }
+  .help-group ul{ list-style:none; }
+  .help-group li{ font-size:14px; color:#3a4a4a; padding:3px 0; }
+  .help-group li i{ color:#7a8a8a; font-style:italic; }
 </style>
 </head>
 <body>
@@ -83,6 +95,45 @@
       </div>
       <div class="examples" id="examples"></div>
       <div class="answer" id="answer"></div>
+
+      <button class="help-toggle" id="helpToggle" type="button">💡 What can I ask?</button>
+      <div class="help" id="help">
+        <div class="help-group">
+          <h4>Is everyone free?</h4>
+          <ul>
+            <li>Are you free on <i>Feb 13, 2027</i>?</li>
+            <li>What's the next free day everyone has?</li>
+            <li>What's on this week? / this weekend?</li>
+          </ul>
+        </div>
+        <div class="help-group">
+          <h4>Marc's work schedule</h4>
+          <ul>
+            <li>Does Marc work on <i>a date</i>?</li>
+            <li>Is Marc off this weekend?</li>
+            <li>When is Marc's next weekend off?</li>
+            <li>What Fridays is Marc off in <i>December</i>?</li>
+            <li>How many days off does Marc have in <i>January</i>?</li>
+          </ul>
+        </div>
+        <div class="help-group">
+          <h4>School & the kids</h4>
+          <ul>
+            <li>Do the kids have school next <i>Tuesday</i>?</li>
+            <li>Do the kids have an early release this week?</li>
+            <li>Is it a half day on <i>a date</i>?</li>
+            <li>When is spring / winter / fall break?</li>
+          </ul>
+        </div>
+        <div class="help-group">
+          <h4>Dates & occasions</h4>
+          <ul>
+            <li>When is <i>Jack's</i> birthday?</li>
+            <li>What day of the week is <i>Christmas</i>?</li>
+            <li>What's happening on <i>July 7, 2026</i>?</li>
+          </ul>
+        </div>
+      </div>
     </div>
 
   </div>
@@ -108,6 +159,14 @@ function tryUnlock(){
 }
 document.getElementById('go').addEventListener('click', tryUnlock);
 document.getElementById('pw').addEventListener('keydown', e=>{ if(e.key==='Enter') tryUnlock(); });
+
+const helpToggle=document.getElementById('helpToggle');
+helpToggle.addEventListener('click', ()=>{
+  const h=document.getElementById('help');
+  const open=h.style.display==='block';
+  h.style.display=open?'none':'block';
+  helpToggle.textContent = open ? '💡 What can I ask?' : '✕ Hide examples';
+});
 
 /* ─────────────────────────────────────────────────────────────
    CALENDAR ENGINE  (ported from the family calendar)
