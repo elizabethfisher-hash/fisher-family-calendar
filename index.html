@@ -350,6 +350,27 @@ function nextFreeDay(){
   return null;
 }
 
+function startOfWeek(ref){ // Monday of ref's week
+  const d=new Date(ref.getFullYear(),ref.getMonth(),ref.getDate());
+  d.setDate(d.getDate() + (d.getDay()===0 ? -6 : 1-d.getDay()));
+  return d;
+}
+function thisWeekend(ref){ // upcoming Sat + Sun
+  const d=new Date(ref.getFullYear(),ref.getMonth(),ref.getDate());
+  const sat=new Date(d); sat.setDate(d.getDate()+((6-d.getDay()+7)%7));
+  const sun=new Date(sat); sun.setDate(sat.getDate()+1);
+  return [sat,sun];
+}
+function dayEntries(dt){
+  const y=dt.getFullYear(),m=dt.getMonth(),d=dt.getDate();
+  const arr=[ isWork(y,m,d)?"👔 Marc works":"🏡 Marc off" ];
+  getEvents(y,m,d).forEach(e=>arr.push(e));
+  if(dt.getDay()===3) arr.push("🤸 Gymnastics 4:30");
+  const s=schoolStatus(dt);
+  if(s.open && /early release/i.test(s.note)) arr.push("🎓 Early release");
+  return arr;
+}
+
 function monthRollup(t){
   // needs a month name + Marc + a list-style question
   let mo=null;
@@ -416,6 +437,81 @@ function respond(text){
     if(fd){ render({title:fmt.format(fd), verdict:"🎉 Everyone's free — nothing scheduled.", vclass:"yes",
       items:[{cls:'off',html:"🏡 Marc is off"},{cls:'none',html:"No events, no school, no activities"}]}); return; }
     render({title:"No fully free day found", verdict:"in the next two years", vclass:"neutral", items:[]}); return;
+  }
+
+  // Marc weekend queries: "is Marc off this weekend?" / "when is Marc's next weekend off?"
+  if(/\bmarc\b/.test(t) && /weekend/.test(t)){
+    const today=new Date(); today.setHours(0,0,0,0);
+    if(/next/.test(t)){
+      let [sat]=thisWeekend(today);
+      for(let w=0; w<104; w++){
+        const s=new Date(sat); s.setDate(sat.getDate()+7*w);
+        const u=new Date(s); u.setDate(s.getDate()+1);
+        if(!isWork(s.getFullYear(),s.getMonth(),s.getDate()) && !isWork(u.getFullYear(),u.getMonth(),u.getDate())){
+          render({title:"Marc's next full weekend off", verdict:fmtShort.format(s)+" – "+fmtShort.format(u), vclass:"yes",
+            items:[s,u].map(d=>({cls:'off', html: fmtShort.format(d)+" — "+dayEntries(d).join(" · ")}))});
+          return;
+        }
+      }
+      render({title:"No full weekend off found", verdict:"in the next two years", vclass:"neutral", items:[]}); return;
+    } else {
+      const [sat,sun]=thisWeekend(today);
+      const wS=isWork(sat.getFullYear(),sat.getMonth(),sat.getDate());
+      const wU=isWork(sun.getFullYear(),sun.getMonth(),sun.getDate());
+      const bothOff=!wS&&!wU;
+      render({title:"This weekend", vclass: bothOff?"yes":(wS&&wU?"no":"neutral"),
+        verdict: bothOff?"Marc is off both days 🎉":(wS&&wU?"Marc works both days":"Marc is only partly off"),
+        items:[sat,sun].map(d=>({cls: isWork(d.getFullYear(),d.getMonth(),d.getDate())?'work':'off',
+          html: fmtShort.format(d)+" — "+dayEntries(d).join(" · ")}))});
+      return;
+    }
+  }
+
+  // early release / half day
+  if(/early release|early dismissal|half[\s-]?day/.test(t)){
+    const dt=parseDate(t);
+    if(dt){
+      const s=schoolStatus(dt);
+      const er = s.open && /early release/i.test(s.note);
+      render({title:fmt.format(dt), vclass: er?"neutral":(s.open?"yes":"no"),
+        verdict: er?"Yes — early release that day.":(s.open?"No — regular full school day.":"No school that day."),
+        items:[{cls:'', html:"🎓 "+s.note}]});
+      return;
+    }
+    const offset=/next/.test(t)?1:0;
+    const mon=startOfWeek(new Date()); mon.setDate(mon.getDate()+7*offset);
+    const er=[];
+    for(let i=0;i<5;i++){ const d=new Date(mon); d.setDate(mon.getDate()+i);
+      const s=schoolStatus(d); if(s.open && /early release/i.test(s.note)) er.push({d,s}); }
+    const wk=(offset?"next":"this")+" week";
+    if(er.length){
+      render({title:"Early release — "+wk, verdict:er.length+" day"+(er.length>1?"s":""), vclass:"neutral",
+        items: er.map(x=>({cls:'', html: fmtShort.format(x.d)+" — "+x.s.note.replace(/^School — /,'')}))});
+    } else {
+      render({title:"Early release — "+wk, verdict:"None", vclass:"neutral",
+        items:[{cls:'none', html:"No early-release days "+wk}]});
+    }
+    return;
+  }
+
+  // agenda: "what's on this week / weekend?" / "next week?"
+  if(/\b(this|next)\s+(week|weekend)\b/.test(t)){
+    const offset=/next/.test(t)?1:0;
+    let range=[];
+    if(/weekend/.test(t)){
+      const [sat,sun]=thisWeekend(new Date());
+      if(offset){ sat.setDate(sat.getDate()+7); sun.setDate(sun.getDate()+7); }
+      range=[sat,sun];
+    } else {
+      const mon=startOfWeek(new Date()); mon.setDate(mon.getDate()+7*offset);
+      for(let i=0;i<7;i++){ const d=new Date(mon); d.setDate(mon.getDate()+i); range.push(d); }
+    }
+    const label=(offset?"Next":"This")+" "+(/weekend/.test(t)?"weekend":"week");
+    render({title:"What's on — "+label.toLowerCase(),
+      verdict: fmtShort.format(range[0])+" – "+fmtShort.format(range[range.length-1]), vclass:"neutral",
+      items: range.map(d=>({cls: isWork(d.getFullYear(),d.getMonth(),d.getDate())?'work':'off',
+        html: "<b>"+fmtShort.format(d)+"</b> — "+dayEntries(d).join(" · ")}))});
+    return;
   }
 
   // break queries
@@ -485,14 +581,15 @@ document.getElementById('q').addEventListener('keydown', e=>{ if(e.key==='Enter'
 /* example chips */
 const EXAMPLES=[
   "Are you free on February 13, 2027?",
-  "Does Marc work on February 13, 2027?",
-  "Do the kids have school next Tuesday?",
-  "When is spring break?",
+  "Is Marc off this weekend?",
+  "When is Marc's next weekend off?",
+  "What's on this week?",
+  "Do the kids have an early release this week?",
+  "How many days off does Marc have in January?",
   "What Fridays is Marc off in December?",
   "When is Jack's birthday?",
   "What day of the week is Christmas?",
   "What's the next free day everyone has?",
-  "When is winter break?",
 ];
 const exWrap=document.getElementById('examples');
 EXAMPLES.forEach(x=>{
