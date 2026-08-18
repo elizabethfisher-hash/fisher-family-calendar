@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fisher Family Calendar — Ask Me Anything</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{
+    font-family:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:#f4f6f6; color:#1f2a2a; min-height:100vh;
+    display:flex; align-items:center; justify-content:center; padding:20px;
+  }
+  .card{
+    width:100%; max-width:640px; background:#fff; border-radius:16px;
+    box-shadow:0 10px 40px rgba(0,0,0,.12); overflow:hidden;
+  }
+  .top{ background:#4AADAD; color:#fff; padding:26px 30px; }
+  .top h1{ font-size:22px; font-weight:800; letter-spacing:.2px; }
+  .top p{ font-size:14px; opacity:.92; margin-top:6px; }
+  .body{ padding:28px 30px 32px; }
+
+  /* gate */
+  .gate label{ display:block; font-size:15px; font-weight:600; margin-bottom:10px; }
+  .row{ display:flex; gap:10px; }
+  input[type=password], input[type=text]{
+    flex:1; font-size:16px; padding:13px 14px; border:1.5px solid #d5dede;
+    border-radius:10px; outline:none; font-family:inherit;
+  }
+  input:focus{ border-color:#4AADAD; }
+  button{
+    background:#4AADAD; color:#fff; border:none; border-radius:10px;
+    padding:0 20px; font-size:16px; font-weight:700; cursor:pointer; font-family:inherit;
+  }
+  button:hover{ background:#3d9797; }
+  .err{ color:#cc0000; font-size:14px; margin-top:12px; min-height:18px; }
+  .hint{ color:#7a8a8a; font-size:13px; margin-top:14px; }
+
+  /* ask panel */
+  .ask{ display:none; }
+  .examples{ margin-top:16px; display:flex; flex-wrap:wrap; gap:8px; }
+  .chip{ background:#eef5f5; color:#2b6b6b; border:1px solid #dbeaea;
+    border-radius:999px; padding:7px 13px; font-size:13px; cursor:pointer; }
+  .chip:hover{ background:#e0eeee; }
+
+  .answer{ margin-top:22px; border:1px solid #e4ecec; border-radius:12px; padding:0; display:none; overflow:hidden; }
+  .answer .head{ padding:16px 18px; background:#f7fbfb; border-bottom:1px solid #e4ecec; }
+  .answer .date{ font-size:18px; font-weight:800; }
+  .answer .verdict{ font-size:15px; margin-top:4px; font-weight:700; }
+  .verdict.yes{ color:#1f8a4c; } .verdict.no{ color:#cc0000; } .verdict.neutral{ color:#2b6b6b; }
+  .answer ul{ list-style:none; padding:14px 18px; }
+  .answer li{ font-size:15px; padding:6px 0 6px 22px; position:relative; }
+  .answer li::before{ content:""; position:absolute; left:0; top:12px; width:8px; height:8px; border-radius:2px; background:#4AADAD; }
+  .answer li.work::before{ background:#0070C0; }
+  .answer li.off::before{ background:#1f8a4c; }
+  .answer li.none::before{ background:#c9d4d4; }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="top">
+    <h1>Fisher Family Calendar 🗓️</h1>
+    <p>Ask if we're free, when the breaks are, or what's happening on any day.</p>
+  </div>
+  <div class="body">
+
+    <!-- PASSWORD GATE -->
+    <div class="gate" id="gate">
+      <label for="pw">Enter the password to continue</label>
+      <div class="row">
+        <input type="password" id="pw" placeholder="Password" autofocus>
+        <button id="go">Unlock</button>
+      </div>
+      <div class="err" id="err"></div>
+      <div class="hint">Everything here is family-friendly — ask away once you're in.</div>
+    </div>
+
+    <!-- ASK PANEL -->
+    <div class="ask" id="askPanel">
+      <div class="row">
+        <input type="text" id="q" placeholder="e.g. Are you free on February 13, 2027?">
+        <button id="askBtn">Ask</button>
+      </div>
+      <div class="examples" id="examples"></div>
+      <div class="answer" id="answer"></div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+/* ─────────────────────────────────────────────────────────────
+   PASSWORD GATE
+   Note: client-side only — a light lock, not real security.
+   ───────────────────────────────────────────────────────────── */
+const PASSWORD = "Murphy";
+const gate = document.getElementById('gate');
+const askPanel = document.getElementById('askPanel');
+function tryUnlock(){
+  const val = document.getElementById('pw').value.trim();
+  if(val.toLowerCase() === PASSWORD.toLowerCase()){
+    gate.style.display='none'; askPanel.style.display='block';
+    document.getElementById('q').focus();
+  } else {
+    document.getElementById('err').textContent = "Hmm, that's not it. Try again.";
+    document.getElementById('pw').select();
+  }
+}
+document.getElementById('go').addEventListener('click', tryUnlock);
+document.getElementById('pw').addEventListener('keydown', e=>{ if(e.key==='Enter') tryUnlock(); });
+
+/* ─────────────────────────────────────────────────────────────
+   CALENDAR ENGINE  (ported from the family calendar)
+   ───────────────────────────────────────────────────────────── */
+const CYCLE_START = new Date(2026,4,6);
+const ON_SET = new Set([0,1,2,8,9,10,11,14,15]);
+function isWork(y,m,d){ const dt=new Date(y,m,d); const diff=Math.round((dt-CYCLE_START)/86400000); return ON_SET.has(((diff%21)+21)%21); }
+
+const SCHOOL_YEAR_START = new Date(2026,7,6);   // Aug 6 2026
+const SCHOOL_YEAR_END   = new Date(2027,5,2);   // Jun 2 2027
+
+const SCHOOL_OFF = {
+  '2026-10-5':"🍂 Fall Recess",'2026-10-6':"🍂 Fall Recess",'2026-10-7':"🍂 Fall Recess",
+  '2026-10-8':"🍂 Fall Recess",'2026-10-9':"🍂 Fall Recess",
+  '2026-10-26':"No School - Teacher In-Service",
+  '2026-11-23':"🦃 Thanksgiving Recess",'2026-11-24':"🦃 Thanksgiving Recess",'2026-11-25':"🦃 Thanksgiving Recess",
+  '2026-11-27':"No School - Board Holiday",
+  '2026-12-21':"⛄ Winter Recess",'2026-12-22':"⛄ Winter Recess",'2026-12-23':"⛄ Winter Recess",
+  '2026-12-28':"⛄ Winter Recess",'2026-12-29':"⛄ Winter Recess",'2026-12-30':"⛄ Winter Recess",'2026-12-31':"⛄ Winter Recess",
+  '2027-3-15':"No School - Teacher In-Service",
+  '2027-4-2':"🌾 No School - Farmworkers Day",
+  '2027-4-5':"🌸 Spring Recess",'2027-4-6':"🌸 Spring Recess",'2027-4-7':"🌸 Spring Recess",
+  '2027-4-8':"🌸 Spring Recess",'2027-4-9':"🌸 Spring Recess",'2027-4-12':"🌸 Spring Recess",
+  '2027-6-2':"🎉 Last Day of School",
+};
+const CONFERENCES = {
+  '2026-11-3':"📚 Conferences - Early Release",'2026-11-4':"📚 Conferences - Early Release",
+  '2026-11-5':"📚 Conferences - Early Release",'2026-11-6':"📚 Conferences - Early Release",
+  '2026-11-9':"📚 Conferences - Early Release",'2026-11-10':"📚 Conferences - Early Release",
+  '2026-11-12':"📚 Conferences - Early Release",'2026-11-13':"📚 Conferences - Early Release",
+};
+const FIXED = {
+  '1-1':"🎆 No School - New Year's Day",'1-5':"🎂 Liz's Birthday",'2-14':"❤️ Valentine's Day",
+  '3-5':"🎂 Marc's Birthday",'3-17':"🍀 St. Patrick's Day",'6-19':"✊ Juneteenth",
+  '7-4':"🎆 Independence Day",'7-7':"🎂 Jack's Birthday",'8-6':"🎒 First Day of School",
+  '10-31':"🎃 Halloween",'11-4':"🎂 Emily's Birthday",'11-11':"🎖️ No School - Veterans Day",
+  '12-24':"🎄 Christmas Eve",'12-25':"🎄 Christmas Day",'12-31':"🥂 New Year's Eve",
+};
+function nthWeekday(y,mo,dow,n){ const f=new Date(y,mo,1); const delta=(dow-f.getDay()+7)%7; return new Date(y,mo,1+delta+7*(n-1)); }
+function lastWeekday(y,mo,dow){ const l=new Date(y,mo+1,0); const delta=(l.getDay()-dow+7)%7; return new Date(y,mo,l.getDate()-delta); }
+function easter(y){const a=y%19,b=Math.floor(y/100),c=y%100,d=Math.floor(b/4),e=b%4,f=Math.floor((b+8)/25),g=Math.floor((b-f+1)/3),h=(19*a+b-d-g+15)%30,i=Math.floor(c/4),k=c%4,l=(32+2*e+2*i-h-k)%7,m=Math.floor((a+11*h+22*l)/451),mo=Math.floor((h+l-7*m+114)/31)-1,dy=((h+l-7*m+114)%31)+1;return new Date(y,mo,dy);}
+function sameDay(a,b){return a.getFullYear()===b.getFullYear()&&a.getMonth()===b.getMonth()&&a.getDate()===b.getDate();}
+
+function getEvents(y,m,d){
+  const dt=new Date(y,m,d); const labels=[]; const key=`${m+1}-${d}`;
+  if(FIXED[key]) labels.push(FIXED[key]);
+  if(sameDay(dt,easter(y)))                 labels.push("🐣 Easter");
+  if(sameDay(dt,nthWeekday(y,0,1,3)))       labels.push("🕊️ No School - MLK Day");
+  if(sameDay(dt,nthWeekday(y,1,1,3)))       labels.push("🏛️ No School - Presidents' Day");
+  if(sameDay(dt,lastWeekday(y,4,1)))        labels.push("🌺 No School - Memorial Day");
+  if(sameDay(dt,nthWeekday(y,4,0,2)))       labels.push("💐 Mother's Day");
+  if(sameDay(dt,nthWeekday(y,5,0,3)))       labels.push("👔 Father's Day");
+  if(sameDay(dt,nthWeekday(y,8,1,1)))       labels.push("🔨 No School - Labor Day");
+  if(sameDay(dt,nthWeekday(y,9,1,2)))       labels.push("🪶 No School - Indigenous Peoples' Day");
+  if(sameDay(dt,nthWeekday(y,10,4,4)))      labels.push("🦃 Thanksgiving");
+  const sk=`${y}-${m+1}-${d}`;
+  if(SCHOOL_OFF[sk]) labels.push(SCHOOL_OFF[sk]);
+  if(CONFERENCES[sk]) labels.push(CONFERENCES[sk]);
+  return labels;
+}
+
+function inSchoolYear(dt){ return dt>=SCHOOL_YEAR_START && dt<=SCHOOL_YEAR_END; }
+function schoolStatus(dt){
+  const y=dt.getFullYear(), m=dt.getMonth(), d=dt.getDate(), dow=dt.getDay();
+  if(dow===0||dow===6) return {open:false, note:"Weekend — no school"};
+  if(!inSchoolYear(dt)) return {open:false, note:"Summer break — no school"};
+  const labels=getEvents(y,m,d);
+  const closed=labels.find(l=>/No School|Recess/.test(l));
+  if(closed) return {open:false, note:"No school ("+closed.replace(/^[^\w]+/,'').replace('No School - ','').trim()+")"};
+  const conf=labels.find(l=>/Conferences/.test(l));
+  if(conf) return {open:true, note:"School — early release (conferences): Emily 1:10, Jack 1:15"};
+  if(dow===3) return {open:true, note:"School — early release (Wed): Emily 1:10, Jack 1:15"};
+  return {open:true, note:"School — regular day: Emily until 2:30, Jack until 2:35"};
+}
+
+/* ─── date parsing ─── */
+const MONTHS={jan:0,january:0,feb:1,february:1,mar:2,march:2,apr:3,april:3,may:4,jun:5,june:5,
+  jul:6,july:6,aug:7,august:7,sep:8,sept:8,september:8,oct:9,october:9,nov:10,november:10,dec:11,december:11};
+const WEEKDAYS={sunday:0,monday:1,tuesday:2,wednesday:3,thursday:4,friday:5,saturday:6,
+  sun:0,mon:1,tue:2,tues:2,wed:3,weds:3,thu:4,thur:4,thurs:4,fri:5,sat:6};
+
+function pickYear(mo, day){
+  // choose the year within the calendar window that is soonest from today
+  const today=new Date(); today.setHours(0,0,0,0);
+  const options=[2026,2027].map(y=>new Date(y,mo,day));
+  const future=options.filter(dt=>dt>=today);
+  if(future.length) return future[0].getFullYear();
+  return options[options.length-1].getFullYear();
+}
+function parseDate(text){
+  const t=text.toLowerCase();
+  const today=new Date(); today.setHours(0,0,0,0);
+  if(/\btoday\b/.test(t)) return new Date(today);
+  if(/\btomorrow\b/.test(t)){ const d=new Date(today); d.setDate(d.getDate()+1); return d; }
+  if(/\byesterday\b/.test(t)){ const d=new Date(today); d.setDate(d.getDate()-1); return d; }
+  // next / this <weekday>
+  let m=t.match(/\b(next|this|upcoming)?\s*(sun|mon|tue|tues|wed|weds|thu|thur|thurs|fri|sat|sunday|monday|tuesday|wednesday|thursday|friday|saturday)\b/);
+  if(m && (m[1] || !/\d/.test(t))){
+    const target=WEEKDAYS[m[2]]; const d=new Date(today);
+    let delta=(target-d.getDay()+7)%7;
+    if(m[1]==='next') delta = delta===0?7:delta+ (0); // "next" = the one in the coming week
+    if(m[1]==='next' && delta===0) delta=7;
+    if(delta===0 && m[1]!=='this') delta=7; // default upcoming, not today
+    if(m[1]==='next') delta = ((target-d.getDay()+7)%7)||7;
+    d.setDate(d.getDate()+delta); return d;
+  }
+  // Month name D, Y   or  Month name D
+  m=t.match(/\b([a-z]+)\.?\s+(\d{1,2})(?:st|nd|rd|th)?(?:,?\s*(\d{4}))?/);
+  if(m && MONTHS[m[1]]!==undefined){
+    const mo=MONTHS[m[1]], day=parseInt(m[2],10);
+    const yr=m[3]?parseInt(m[3],10):pickYear(mo,day);
+    return new Date(yr,mo,day);
+  }
+  // D Month Y
+  m=t.match(/\b(\d{1,2})(?:st|nd|rd|th)?\s+([a-z]+)\.?(?:,?\s*(\d{4}))?/);
+  if(m && MONTHS[m[2]]!==undefined){
+    const mo=MONTHS[m[2]], day=parseInt(m[1],10);
+    const yr=m[3]?parseInt(m[3],10):pickYear(mo,day);
+    return new Date(yr,mo,day);
+  }
+  // numeric M/D/Y or M/D
+  m=t.match(/\b(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?\b/);
+  if(m){
+    const mo=parseInt(m[1],10)-1, day=parseInt(m[2],10);
+    let yr=m[3]?parseInt(m[3],10):pickYear(mo,day);
+    if(yr<100) yr+=2000;
+    return new Date(yr,mo,day);
+  }
+  return null;
+}
+
+/* ─── break lookup ─── */
+const BREAK_KEYS=[
+  {re:/spring\s*(break|recess)/, label:"Spring Recess", name:"Spring Break"},
+  {re:/winter\s*(break|recess)/, label:"Winter Recess", name:"Winter Break"},
+  {re:/fall\s*(break|recess)/,   label:"Fall Recess",   name:"Fall Break"},
+  {re:/(thanksgiving)\s*(break|recess)?/, label:"Thanksgiving Recess", name:"Thanksgiving Break"},
+];
+function findBreak(label){
+  const dates=[];
+  for(const [k,v] of Object.entries(SCHOOL_OFF)){
+    if(v.includes(label)){ const [y,m,d]=k.split('-').map(Number); dates.push(new Date(y,m-1,d)); }
+  }
+  dates.sort((a,b)=>a-b);
+  return dates.length?{start:dates[0],end:dates[dates.length-1],count:dates.length}:null;
+}
+
+/* ─── formatting ─── */
+const fmt=new Intl.DateTimeFormat('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'});
+const fmtShort=new Intl.DateTimeFormat('en-US',{weekday:'short',month:'short',day:'numeric'});
+
+function answerForDate(dt, mode){
+  const y=dt.getFullYear(),m=dt.getMonth(),d=dt.getDate(),dow=dt.getDay();
+  const marcWorks=isWork(y,m,d);
+  const events=getEvents(y,m,d);
+  const school=schoolStatus(dt);
+  const isWeekend=(dow===0||dow===6);
+
+  let verdict, vclass;
+  if(mode==='school'){
+    verdict = school.open ? "Yes — the kids have school." : "No — no school that day.";
+    vclass  = school.open ? "yes" : "no";
+  } else if(mode==='marc_work'){
+    // "does Marc work?" — Yes = he works
+    verdict = marcWorks ? "Yes — Marc works that day." : "No — Marc is off that day.";
+    vclass  = marcWorks ? "no" : "yes";
+  } else if(mode==='marc_free'){
+    // "is Marc free/off?" — Yes = he's free
+    verdict = marcWorks ? "No — Marc works that day (not free)." : "Yes — Marc is free that day.";
+    vclass  = marcWorks ? "no" : "yes";
+  } else {
+    // "are you/we free?" — free if Marc is off
+    verdict = marcWorks ? "Not really — Marc is working that day." : "Yes — Marc is off that day.";
+    vclass  = marcWorks ? "no" : "yes";
+  }
+
+  const items=[];
+  items.push({cls: marcWorks?'work':'off', html: marcWorks?"👔 <b>Marc is on shift</b> (M Work)":"🏡 <b>Marc is off</b>"});
+  events.forEach(ev=> items.push({cls:'', html: ev}));
+  if(dow===3 && !isWeekend) items.push({cls:'', html:"🤸 Gymnastics @ 4:30"});
+  if(!isWeekend) items.push({cls:'', html:"🎓 "+school.note});
+  if(isWeekend && events.length===0) items.push({cls:'none', html:"No scheduled events"});
+
+  return {title:fmt.format(dt), verdict, vclass, items};
+}
+
+function monthRollup(t){
+  // needs a month name + Marc + a list-style question
+  let mo=null;
+  for(const [name,idx] of Object.entries(MONTHS)){
+    if(new RegExp("\\b"+name+"\\b").test(t)){ mo=idx; break; }
+  }
+  if(mo===null) return null;
+  if(!/\bmarc\b/.test(t)) return null;
+  if(!/\b(what|which|list|all|when|show)\b/.test(t) && !/\bdays?\b/.test(t)) return null;
+  // has an explicit single day-of-month? then it's not a roll-up
+  const monthName=Object.keys(MONTHS).find(n=>new RegExp("\\b"+n+"\\b").test(t));
+  if(monthName && new RegExp("\\b"+monthName+"\\.?\\s+\\d{1,2}(?!\\d)").test(t)) return null;
+
+  // weekday filter
+  let dowFilter=null;
+  for(const [name,idx] of Object.entries(WEEKDAYS)){
+    if(new RegExp("\\b"+name+"s?\\b").test(t) && name.length>3){ dowFilter=idx; break; }
+  }
+  // off vs work
+  const wantOff = /\b(off|free|available|not working)\b/.test(t);
+  const yrMatch = t.match(/\b(20\d{2})\b/);
+  const yr = yrMatch ? parseInt(yrMatch[1],10) : (m=>{ const today=new Date(); today.setHours(0,0,0,0);
+    const a=new Date(2026,m,1), b=new Date(2027,m,1);
+    if(a>=today) return 2026; if(b>=today) return 2027; return 2026; })(mo);
+
+  const days=new Date(yr,mo+1,0).getDate();
+  const hits=[];
+  for(let d=1; d<=days; d++){
+    const dt=new Date(yr,mo,d);
+    if(dowFilter!==null && dt.getDay()!==dowFilter) continue;
+    const works=isWork(yr,mo,d);
+    if(wantOff ? !works : works) hits.push(dt);
+  }
+
+  const dowLabel = dowFilter!==null
+    ? new Intl.DateTimeFormat('en-US',{weekday:'long'}).format(new Date(2026,10,1+((dowFilter-new Date(2026,10,1).getDay()+7)%7)))+"s"
+    : "days";
+  const monthYr = new Intl.DateTimeFormat('en-US',{month:'long',year:'numeric'}).format(new Date(yr,mo,1));
+  const title = "Marc is "+(wantOff?"off":"working")+" — "+dowLabel+" in "+monthYr;
+
+  if(hits.length===0){
+    return {title, verdict:"None", vclass:"neutral",
+      items:[{cls:'none', html:"No "+dowLabel.toLowerCase()+" that month match."}]};
+  }
+  return {
+    title,
+    verdict: hits.length+" "+(hits.length===1?"day":"days"),
+    vclass: wantOff?"yes":"no",
+    items: hits.map(dt=>{
+      const ev=getEvents(dt.getFullYear(),dt.getMonth(),dt.getDate());
+      return {cls: wantOff?'off':'work',
+        html: fmtShort.format(dt) + (ev.length?" — "+ev.join(", "):"")};
+    })
+  };
+}
+
+function respond(text){
+  const t=text.toLowerCase().trim();
+  const ans=document.getElementById('answer');
+
+  // break queries
+  for(const b of BREAK_KEYS){
+    if(b.re.test(t)){
+      const r=findBreak(b.label);
+      if(r){
+        const same=sameDay(r.start,r.end);
+        render({
+          title:b.name,
+          verdict: same ? fmtShort.format(r.start) : (fmtShort.format(r.start)+" — "+fmtShort.format(r.end)),
+          vclass:"neutral",
+          items:[{cls:'', html:"School is out for "+r.count+" day"+(r.count>1?"s":"")+" 🌟"},
+                 {cls:'', html:"First day back: "+fmtShort.format(new Date(r.end.getFullYear(),r.end.getMonth(),r.end.getDate()+ (r.end.getDay()===5?3:1)))+" (approx.)"}]
+        });
+        return;
+      }
+    }
+  }
+  if(/last day of school|summer break|school (get|let) out/.test(t)){
+    render({title:"Last Day of School", verdict:fmtShort.format(SCHOOL_YEAR_END), vclass:"neutral",
+      items:[{cls:'',html:"🎉 Then it's summer!"}]});
+    return;
+  }
+  if(/first day of school|school start/.test(t)){
+    render({title:"First Day of School", verdict:fmtShort.format(SCHOOL_YEAR_START), vclass:"neutral",
+      items:[{cls:'',html:"🎒 Back to the books"}]});
+    return;
+  }
+
+  // month roll-up: "what fridays is marc off in December?" / "which days does marc work in January?"
+  const rollup = monthRollup(t);
+  if(rollup){ render(rollup); return; }
+
+  const dt=parseDate(t);
+  if(!dt){
+    render({title:"I didn't catch a date", verdict:"Try a specific day", vclass:"neutral",
+      items:[{cls:'none',html:"e.g. \"Are you free on Feb 13, 2027?\""},
+             {cls:'none',html:"e.g. \"Do the kids have school next Tuesday?\""},
+             {cls:'none',html:"e.g. \"When is spring break?\""}]});
+    return;
+  }
+  let mode = 'free';
+  const asksFree = /\bfree\b|available|\boff\b/.test(t);
+  if(/\bmarc\b/.test(t)){
+    mode = asksFree ? 'marc_free' : 'marc_work';
+  } else if(/school/.test(t)){
+    mode = 'school';
+  }
+  render(answerForDate(dt, mode));
+}
+
+function render(a){
+  const ans=document.getElementById('answer');
+  ans.style.display='block';
+  ans.innerHTML =
+    '<div class="head"><div class="date">'+a.title+'</div>'+
+    '<div class="verdict '+a.vclass+'">'+a.verdict+'</div></div>'+
+    '<ul>'+a.items.map(it=>'<li class="'+it.cls+'">'+it.html+'</li>').join('')+'</ul>';
+}
+
+document.getElementById('askBtn').addEventListener('click', ()=>respond(document.getElementById('q').value));
+document.getElementById('q').addEventListener('keydown', e=>{ if(e.key==='Enter') respond(e.target.value); });
+
+/* example chips */
+const EXAMPLES=[
+  "Are you free on February 13, 2027?",
+  "Does Marc work on February 13, 2027?",
+  "Do the kids have school next Tuesday?",
+  "When is spring break?",
+  "What Fridays is Marc off in December?",
+  "When is winter break?",
+  "What's happening on July 7, 2026?",
+];
+const exWrap=document.getElementById('examples');
+EXAMPLES.forEach(x=>{
+  const c=document.createElement('span'); c.className='chip'; c.textContent=x;
+  c.addEventListener('click', ()=>{ document.getElementById('q').value=x; respond(x); });
+  exWrap.appendChild(c);
+});
+</script>
+</body>
+</html>
