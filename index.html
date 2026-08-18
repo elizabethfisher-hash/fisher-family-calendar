@@ -335,6 +335,21 @@ function eventLookup(t){
     items: results.map(r=>({cls:'', html:r.label+" — "+fmt.format(r.date)}))};
 }
 
+/* next day with a completely blank cell — Marc off, no events, no gym, no school */
+function nextFreeDay(){
+  const today=new Date(); today.setHours(0,0,0,0);
+  for(let i=0;i<730;i++){
+    const dt=new Date(today.getFullYear(),today.getMonth(),today.getDate()+i);
+    const y=dt.getFullYear(),m=dt.getMonth(),d=dt.getDate();
+    if(isWork(y,m,d)) continue;                 // Marc working
+    if(getEvents(y,m,d).length) continue;        // holiday / birthday / break
+    if(dt.getDay()===3) continue;                // gymnastics (Wednesdays)
+    if(schoolStatus(dt).open) continue;          // kids in school
+    return dt;
+  }
+  return null;
+}
+
 function monthRollup(t){
   // needs a month name + Marc + a list-style question
   let mo=null;
@@ -394,6 +409,14 @@ function monthRollup(t){
 function respond(text){
   const t=text.toLowerCase().trim();
   const ans=document.getElementById('answer');
+
+  // next free day for everyone
+  if(/\bfree day\b/.test(t) || /(everyone|everybody|whole family|we all|the family)\b.*(free|off|open)/.test(t) || /next.*(blank|free|open)\s*day/.test(t)){
+    const fd=nextFreeDay();
+    if(fd){ render({title:fmt.format(fd), verdict:"🎉 Everyone's free — nothing scheduled.", vclass:"yes",
+      items:[{cls:'off',html:"🏡 Marc is off"},{cls:'none',html:"No events, no school, no activities"}]}); return; }
+    render({title:"No fully free day found", verdict:"in the next two years", vclass:"neutral", items:[]}); return;
+  }
 
   // break queries
   for(const b of BREAK_KEYS){
@@ -468,6 +491,7 @@ const EXAMPLES=[
   "What Fridays is Marc off in December?",
   "When is Jack's birthday?",
   "What day of the week is Christmas?",
+  "What's the next free day everyone has?",
   "When is winter break?",
 ];
 const exWrap=document.getElementById('examples');
