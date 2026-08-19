@@ -39,6 +39,12 @@
     background:none; border:none; padding:6px; font-size:18px; line-height:1;
     cursor:pointer; opacity:.55; }
   .pw-eye:hover{ background:none; opacity:1; }
+  .q-wrap{ position:relative; flex:1; display:flex; }
+  .q-wrap input{ flex:1; padding-right:40px; }
+  .q-x{ position:absolute; right:6px; top:50%; transform:translateY(-50%); display:none;
+    background:#e4ecec; border:none; border-radius:50%; width:24px; height:24px; padding:0;
+    font-size:13px; line-height:1; color:#5a6a6a; cursor:pointer; }
+  .q-x:hover{ background:#d3e0e0; }
   .err{ color:#cc0000; font-size:14px; margin-top:12px; min-height:18px; }
   .hint{ color:#7a8a8a; font-size:13px; margin-top:14px; }
 
@@ -123,7 +129,10 @@
     <!-- ASK PANEL -->
     <div class="ask" id="askPanel">
       <div class="row">
-        <input type="text" id="q" placeholder="e.g. Are you free on February 13, 2027?">
+        <div class="q-wrap">
+          <input type="text" id="q" placeholder="e.g. Are you free on February 13, 2027?">
+          <button type="button" id="qClear" class="q-x" aria-label="Clear">✕</button>
+        </div>
         <button id="askBtn">Ask</button>
       </div>
       <div class="examples" id="examples"></div>
@@ -815,6 +824,12 @@ function render(a){
 document.getElementById('askBtn').addEventListener('click', ()=>respond(document.getElementById('q').value));
 document.getElementById('q').addEventListener('keydown', e=>{ if(e.key==='Enter') respond(e.target.value); });
 
+const qInput=document.getElementById('q');
+const qClear=document.getElementById('qClear');
+function updateClear(){ qClear.style.display = qInput.value ? 'block' : 'none'; }
+qInput.addEventListener('input', updateClear);
+qClear.addEventListener('click', ()=>{ qInput.value=''; updateClear(); qInput.focus(); });
+
 /* example chips */
 const EXAMPLES=[
   "Are you free on February 13, 2027?",
@@ -825,7 +840,7 @@ const EXAMPLES=[
 const exWrap=document.getElementById('examples');
 EXAMPLES.forEach(x=>{
   const c=document.createElement('span'); c.className='chip'; c.textContent=x;
-  c.addEventListener('click', ()=>{ document.getElementById('q').value=x; respond(x); });
+  c.addEventListener('click', ()=>{ document.getElementById('q').value=x; updateClear(); respond(x); });
   exWrap.appendChild(c);
 });
 
