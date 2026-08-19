@@ -33,6 +33,12 @@
     padding:0 20px; font-size:16px; font-weight:700; cursor:pointer; font-family:inherit;
   }
   button:hover{ background:#3d9797; }
+  .pw-wrap{ position:relative; flex:1; display:flex; }
+  .pw-wrap input{ flex:1; padding-right:44px; }
+  .pw-eye{ position:absolute; right:6px; top:50%; transform:translateY(-50%);
+    background:none; border:none; padding:6px; font-size:18px; line-height:1;
+    cursor:pointer; opacity:.55; }
+  .pw-eye:hover{ background:none; opacity:1; }
   .err{ color:#cc0000; font-size:14px; margin-top:12px; min-height:18px; }
   .hint{ color:#7a8a8a; font-size:13px; margin-top:14px; }
 
@@ -104,7 +110,10 @@
     <div class="gate" id="gate">
       <label for="pw">Enter the password to continue</label>
       <div class="row">
-        <input type="password" id="pw" placeholder="Password" autofocus>
+        <div class="pw-wrap">
+          <input type="password" id="pw" placeholder="Password" autofocus>
+          <button type="button" id="pwToggle" class="pw-eye" aria-label="Show password">👁️</button>
+        </div>
         <button id="go">Unlock</button>
       </div>
       <div class="err" id="err"></div>
@@ -219,6 +228,16 @@ function tryUnlock(){
 }
 document.getElementById('go').addEventListener('click', tryUnlock);
 document.getElementById('pw').addEventListener('keydown', e=>{ if(e.key==='Enter') tryUnlock(); });
+
+const pwToggle=document.getElementById('pwToggle');
+pwToggle.addEventListener('click', ()=>{
+  const pw=document.getElementById('pw');
+  const show = pw.type==='password';
+  pw.type = show ? 'text' : 'password';
+  pwToggle.textContent = show ? '🙈' : '👁️';
+  pwToggle.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+  pw.focus();
+});
 
 const helpToggle=document.getElementById('helpToggle');
 helpToggle.addEventListener('click', ()=>{
