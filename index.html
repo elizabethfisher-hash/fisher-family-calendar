@@ -339,6 +339,14 @@ const CONFERENCES = {
   '2026-11-9':"📚 Conferences - Early Release",'2026-11-10':"📚 Conferences - Early Release",
   '2026-11-12':"📚 Conferences - Early Release",'2026-11-13':"📚 Conferences - Early Release",
 };
+const CUSTOM = {
+  '2026-8-11': ["🎒 BTSN 5th Grade 5:30"],
+  '2026-8-18': ["🎒 BTSN 1st Grade 5:30"],
+  '2026-8-22': ["🏊 Pool Party"],
+  '2026-8-24': ["🧺 Welcome Back Picnic 5:30"],
+  '2026-8-26': ["🩺 Marc Training 9:00"],
+  '2026-8-29': ["🎉 Martinez Waterfront Festival"],
+};
 const FIXED = {
   '1-1':"🎆 No School - New Year's Day",'1-5':"🎂 Liz's Birthday",'2-14':"❤️ Valentine's Day",
   '3-5':"🎂 Marc's Birthday",'3-17':"🍀 St. Patrick's Day",'6-19':"✊ Juneteenth",
@@ -366,6 +374,7 @@ function getEvents(y,m,d){
   const sk=`${y}-${m+1}-${d}`;
   if(SCHOOL_OFF[sk]) labels.push(SCHOOL_OFF[sk]);
   if(CONFERENCES[sk]) labels.push(CONFERENCES[sk]);
+  if(CUSTOM[sk]) CUSTOM[sk].forEach(l=>labels.push(l));
   if(APPROVED[sk]) APPROVED[sk].forEach(l=>labels.push(l));
   return labels;
 }

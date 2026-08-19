@@ -153,6 +153,16 @@
       '2026-11-13':"📚 Conferences - Early Release",
     };
 
+    // ── One-off family events (dated) ────────────────────────────────────────
+    const CUSTOM = {
+      '2026-8-11': ["🎒 BTSN 5th Grade 5:30"],
+      '2026-8-18': ["🎒 BTSN 1st Grade 5:30"],
+      '2026-8-22': ["🏊 Pool Party"],
+      '2026-8-24': ["🧺 Welcome Back Picnic 5:30"],
+      '2026-8-26': ["🩺 Marc Training 9:00"],
+      '2026-8-29': ["🎉 Martinez Waterfront Festival"],
+    };
+
     // ── Holiday / event helpers ───────────────────────────────────────────────
     const FIXED = {
       '1-1':  "🎆 No School - New Year's Day",
@@ -221,6 +231,7 @@
       if (sameDay(d, nthWeekday(y, 10, 4, 4)))         labels.push("🦃 Thanksgiving");
       const schoolKey = `${year}-${month+1}-${day}`;
       if (SCHOOL_OFF[schoolKey]) labels.push(SCHOOL_OFF[schoolKey]);
+      if (CUSTOM[schoolKey]) CUSTOM[schoolKey].forEach(l => labels.push(l));
       if (APPROVED[schoolKey]) APPROVED[schoolKey].forEach(l => labels.push(l));
       return labels;
     }
