@@ -14,13 +14,14 @@
     background:#f4f6f6; color:#1f2a2a; min-height:100vh;
     display:flex; align-items:center; justify-content:center; padding:20px;
   }
+  html,body{ max-width:100%; overflow-x:hidden; }
   .card{
-    width:100%; max-width:640px; background:#fff; border-radius:16px;
+    width:100%; max-width:640px; min-width:0; background:#fff; border-radius:16px;
     box-shadow:0 10px 40px rgba(0,0,0,.12); overflow:hidden;
   }
   .top{ background:#4AADAD; color:#fff; padding:26px 30px; }
-  .top-head{ display:flex; align-items:center; gap:18px; }
-  .top-head h1{ flex:1; }
+  .top-head{ display:flex; align-items:center; gap:18px; flex-wrap:wrap; }
+  .top-head h1{ flex:1; min-width:0; overflow-wrap:anywhere; }
   .fam-photo{ width:150px; height:100px; border-radius:18px; object-fit:cover;
     object-position:center 25%; border:3px solid rgba(255,255,255,.9);
     box-shadow:0 3px 10px rgba(0,0,0,.2); flex-shrink:0; }
