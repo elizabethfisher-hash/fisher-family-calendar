@@ -4,10 +4,13 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Fisher Family Calendar — Ask Me Anything</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&family=Quicksand:wght@500;600;700&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   *{box-sizing:border-box;margin:0;padding:0;}
   body{
-    font-family:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    font-family:'Poppins',-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
     background:#f4f6f6; color:#1f2a2a; min-height:100vh;
     display:flex; align-items:center; justify-content:center; padding:20px;
   }
@@ -16,7 +19,7 @@
     box-shadow:0 10px 40px rgba(0,0,0,.12); overflow:hidden;
   }
   .top{ background:#4AADAD; color:#fff; padding:26px 30px; }
-  .top h1{ font-size:22px; font-weight:800; letter-spacing:.2px; }
+  .top h1{ font-family:'Caveat',cursive; font-size:38px; font-weight:700; letter-spacing:.5px; line-height:1.05; }
   .top p{ font-size:14px; opacity:.92; margin-top:6px; }
   .body{ padding:28px 30px 32px; }
 
@@ -57,8 +60,8 @@
 
   .answer{ margin-top:22px; border:1px solid #e4ecec; border-radius:12px; padding:0; display:none; overflow:hidden; }
   .answer .head{ padding:16px 18px; background:#f7fbfb; border-bottom:1px solid #e4ecec; }
-  .answer .date{ font-size:18px; font-weight:800; }
-  .answer .verdict{ font-size:15px; margin-top:4px; font-weight:700; }
+  .answer .date{ font-family:'Quicksand',sans-serif; font-size:19px; font-weight:700; }
+  .answer .verdict{ font-family:'Quicksand',sans-serif; font-size:15px; margin-top:4px; font-weight:700; }
   .verdict.yes{ color:#1f8a4c; } .verdict.no{ color:#cc0000; } .verdict.neutral{ color:#2b6b6b; }
   .answer ul{ list-style:none; padding:14px 18px; }
   .answer li{ font-size:15px; padding:6px 0 6px 22px; position:relative; }
@@ -73,14 +76,14 @@
   .help{ display:none; margin-top:14px; border:1px solid #e4ecec; border-radius:12px;
     padding:16px 18px 6px; background:#fafcfc; }
   .help-group{ margin-bottom:14px; }
-  .help-group h4{ font-size:13px; text-transform:uppercase; letter-spacing:.5px;
-    color:#4AADAD; margin-bottom:6px; }
+  .help-group h4{ font-family:'Quicksand',sans-serif; font-size:13px; text-transform:uppercase; letter-spacing:.5px;
+    color:#4AADAD; margin-bottom:6px; font-weight:700; }
   .help-group ul{ list-style:none; }
   .help-group li{ font-size:14px; color:#3a4a4a; padding:3px 0; }
   .help-group li i{ color:#7a8a8a; font-style:italic; }
   .help-ref{ border-top:1px solid #e4ecec; padding-top:12px; margin-top:2px; }
-  .help-ref-title{ font-size:13px; text-transform:uppercase; letter-spacing:.5px;
-    color:#4AADAD; margin-bottom:6px; }
+  .help-ref-title{ font-family:'Quicksand',sans-serif; font-size:13px; text-transform:uppercase; letter-spacing:.5px;
+    color:#4AADAD; margin-bottom:6px; font-weight:700; }
   .help-ref a{ display:block; font-size:14px; font-weight:700; color:#4AADAD; text-decoration:none; padding:4px 0; }
   .help-ref a:hover{ text-decoration:underline; }
 
@@ -228,10 +231,14 @@
 const PASSWORD = "Murphy";
 const gate = document.getElementById('gate');
 const askPanel = document.getElementById('askPanel');
+function openApp(){
+  gate.style.display='none'; askPanel.style.display='block';
+}
 function tryUnlock(){
   const val = document.getElementById('pw').value.trim();
   if(val.toLowerCase() === PASSWORD.toLowerCase()){
-    gate.style.display='none'; askPanel.style.display='block';
+    try{ localStorage.setItem('ffc_unlocked','1'); }catch(e){}
+    openApp();
     document.getElementById('q').focus();
   } else {
     document.getElementById('err').textContent = "Hmm, that's not it. Try again.";
@@ -890,6 +897,9 @@ document.getElementById('rq-send').addEventListener('click', ()=>{
     reqNote("Couldn't reach the server. Check your connection and try again.", "bad");
   });
 });
+
+/* remember unlock — skip the gate on return visits (this device only) */
+try{ if(localStorage.getItem('ffc_unlocked')==='1') openApp(); }catch(e){}
 
 /* pull in already-approved events so they show up in answers */
 loadApproved();
