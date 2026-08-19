@@ -3,9 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <title>Calendar 2026–2027</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Style+Script&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: Arial, sans-serif; background: #eee; }
+    body { font-family: 'Poppins', Arial, sans-serif; background: #eee; }
 
     .page {
       width: 1150px;
@@ -25,8 +28,8 @@
 
     .cal-title { display: flex; align-items: baseline; gap: 12px; }
 
-    .cal-year  { font-size: 34px; font-weight: bold; color: #4AADAD; line-height: 1; }
-    .cal-month { font-size: 26px; font-weight: bold; color: #222; }
+    .cal-year  { font-family: 'Poppins', sans-serif; font-size: 30px; font-weight: 700; color: #4AADAD; line-height: 1; }
+    .cal-month { font-family: 'Style Script', cursive; font-size: 46px; font-weight: 400; color: #4AADAD; line-height: 1; }
 
     .cal-info { text-align: right; font-size: 11.5px; line-height: 1.7; color: #222; }
 
@@ -52,6 +55,7 @@
 
     .holiday   { font-size: 10px; color: #222; margin-top: 1px; font-weight: bold; }
     .holiday.noschool { font-size: 8px; white-space: nowrap; }
+    .holiday.requested { color: #b5006e; background: #fde7f3; border-radius: 4px; padding: 1px 3px; display: inline-block; }
     .conf      { font-size: 10px; color: #222; margin-top: 1px; white-space: nowrap; }
     .m-work    { position: absolute; top: 4px; left: 0; right: 0; text-align: center; font-size: 10px; color: #0070C0; }
     .gym       { font-size: 10px; color: #222; margin-top: auto; padding-top: 6px; }
@@ -80,6 +84,22 @@
 <body>
   <div id="app"></div>
   <script>
+    // ── Approved event requests (from the request backend) ───────────────────
+    // Paste your Google Apps Script Web App URL here (see calendar-request-SETUP.md)
+    const REQUEST_ENDPOINT = "PASTE_WEB_APP_URL_HERE";
+    const APPROVED = {}; // keyed "year-month-day" (month 1-based)
+    window.__calFeed = function (rows) {
+      (rows || []).forEach(function (r) {
+        if (!r || !r.date) return;
+        const p = String(r.date).split('-');
+        if (p.length < 3) return;
+        const key = parseInt(p[0],10)+'-'+parseInt(p[1],10)+'-'+parseInt(p[2],10);
+        const label = "📌 "+(r.title||'Event') + (r.time? " ("+r.time+")":"") + (r.by? " — "+r.by:"");
+        (APPROVED[key] = APPROVED[key] || []).push(label);
+      });
+      renderCalendar(); // re-draw with the approved events included
+    };
+
     // ── M Work cycle ──────────────────────────────────────────────────────────
     const CYCLE_START = new Date(2026, 4, 6); // May 6 2026
     const ON_SET = new Set([0,1,2,8,9,10,11,14,15]);
@@ -201,6 +221,7 @@
       if (sameDay(d, nthWeekday(y, 10, 4, 4)))         labels.push("🦃 Thanksgiving");
       const schoolKey = `${year}-${month+1}-${day}`;
       if (SCHOOL_OFF[schoolKey]) labels.push(SCHOOL_OFF[schoolKey]);
+      if (APPROVED[schoolKey]) APPROVED[schoolKey].forEach(l => labels.push(l));
       return labels;
     }
 
@@ -329,8 +350,8 @@
     }
 
     // ── Calendar builder ──────────────────────────────────────────────────────
-    const MONTH_NAMES = ['JANUARY','FEBRUARY','MARCH','APRIL','MAY','JUNE',
-                         'JULY','AUGUST','SEPTEMBER','OCTOBER','NOVEMBER','DECEMBER'];
+    const MONTH_NAMES = ['January','February','March','April','May','June',
+                         'July','August','September','October','November','December'];
     const DAY_NAMES   = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
 
     function daysInMonth(year, month) {
@@ -389,9 +410,11 @@
           const numClass = other ? 'day-num other' : 'day-num';
           const workHtml = work ? `<div class="m-work">M Work</div>` : '';
           const evtHtml  = events.map(ev =>
-            /No School/.test(ev)
-              ? `<div class="holiday noschool">${ev}</div>`
-              : `<div class="holiday">${ev}</div>`
+            /^📌/.test(ev)
+              ? `<div class="holiday requested">${ev}</div>`
+              : /No School/.test(ev)
+                ? `<div class="holiday noschool">${ev}</div>`
+                : `<div class="holiday">${ev}</div>`
           ).join('');
           const confKey  = `${dy_year}-${dy_month+1}-${dy}`;
           const confHtml = (!other && CONFERENCES[confKey])
@@ -410,12 +433,24 @@
       return html;
     }
 
-    let out = '';
-    for (let y = 2026; y <= 2027; y++) {
-      const ms = y === 2026 ? 6 : 0;
-      for (let m = ms; m < 12; m++) out += buildMonth(y, m);
+    function renderCalendar() {
+      let out = '';
+      for (let y = 2026; y <= 2027; y++) {
+        const ms = y === 2026 ? 6 : 0;
+        for (let m = ms; m < 12; m++) out += buildMonth(y, m);
+      }
+      document.getElementById('app').innerHTML = out;
     }
-    document.getElementById('app').innerHTML = out;
+    renderCalendar();
+
+    // pull in approved event requests, then re-render
+    (function loadApproved() {
+      if (!REQUEST_ENDPOINT || REQUEST_ENDPOINT.indexOf('http') !== 0) return;
+      const s = document.createElement('script');
+      s.src = REQUEST_ENDPOINT + (REQUEST_ENDPOINT.indexOf('?') >= 0 ? '&' : '?') + "feed=events&callback=__calFeed";
+      s.onerror = function () {};
+      document.body.appendChild(s);
+    })();
   </script>
 </body>
 </html>
