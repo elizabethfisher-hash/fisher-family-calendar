@@ -40,7 +40,7 @@
       padding: 5px 0;
       border: 1px solid #999;
       font-size: 13px;
-      font-weight: bold;
+      font-weight: normal;
     }
 
     .cal-grid td {
@@ -55,7 +55,8 @@
 
     .holiday   { font-size: 10px; color: #222; margin-top: 1px; font-weight: bold; }
     .holiday.noschool { font-size: 8px; white-space: nowrap; }
-    .holiday.requested { color: #b5006e; background: #fde7f3; border-radius: 4px; padding: 1px 3px; display: inline-block; }
+    .event     { font-size: 10px; color: #222; margin-top: 1px; font-weight: normal; }
+    .event.requested { color: #b5006e; background: #fde7f3; border-radius: 4px; padding: 1px 3px; display: inline-block; }
     .conf      { font-size: 10px; color: #222; margin-top: 1px; white-space: nowrap; }
     .m-work    { position: absolute; top: 4px; left: 0; right: 0; text-align: center; font-size: 10px; color: #0070C0; }
     .gym       { font-size: 10px; color: #222; margin-top: auto; padding-top: 6px; }
@@ -423,12 +424,15 @@
 
           const numClass = other ? 'day-num other' : 'day-num';
           const workHtml = work ? `<div class="m-work">M Work</div>` : '';
+          const customList = (!other && CUSTOM[`${dy_year}-${dy_month+1}-${dy}`]) || [];
           const evtHtml  = events.map(ev =>
             /^📌/.test(ev)
-              ? `<div class="holiday requested">${ev}</div>`
-              : /No School/.test(ev)
-                ? `<div class="holiday noschool">${ev}</div>`
-                : `<div class="holiday">${ev}</div>`
+              ? `<div class="event requested">${ev}</div>`
+              : customList.includes(ev)
+                ? `<div class="event">${ev}</div>`
+                : /No School/.test(ev)
+                  ? `<div class="holiday noschool">${ev}</div>`
+                  : `<div class="holiday">${ev}</div>`
           ).join('');
           const confKey  = `${dy_year}-${dy_month+1}-${dy}`;
           const confHtml = (!other && CONFERENCES[confKey])
