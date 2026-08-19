@@ -66,6 +66,27 @@
   .help-group ul{ list-style:none; }
   .help-group li{ font-size:14px; color:#3a4a4a; padding:3px 0; }
   .help-group li i{ color:#7a8a8a; font-style:italic; }
+
+  /* request an event */
+  .req-toggle{ margin-top:10px; background:none; color:#2b6b6b; border:none;
+    padding:0; font-size:14px; font-weight:700; cursor:pointer; display:block; }
+  .req-toggle:hover{ background:none; text-decoration:underline; }
+  .req{ display:none; margin-top:14px; border:1px solid #e4ecec; border-radius:12px;
+    padding:18px; background:#fafcfc; }
+  .req h4{ font-size:15px; margin-bottom:4px; }
+  .req .sub{ font-size:13px; color:#7a8a8a; margin-bottom:14px; }
+  .req .field{ margin-bottom:12px; }
+  .req label{ display:block; font-size:13px; font-weight:600; color:#3a4a4a; margin-bottom:5px; }
+  .req input, .req textarea{ width:100%; font-size:15px; padding:11px 12px;
+    border:1.5px solid #d5dede; border-radius:9px; outline:none; font-family:inherit; }
+  .req input:focus, .req textarea:focus{ border-color:#4AADAD; }
+  .req textarea{ resize:vertical; min-height:56px; }
+  .req .two{ display:flex; gap:10px; }
+  .req .two .field{ flex:1; }
+  .req .submit{ margin-top:4px; width:100%; padding:13px; }
+  .req .note{ margin-top:12px; font-size:14px; min-height:18px; }
+  .req .note.ok{ color:#1f8a4c; font-weight:600; }
+  .req .note.bad{ color:#cc0000; }
 </style>
 </head>
 <body>
@@ -136,6 +157,36 @@
           </ul>
         </div>
       </div>
+
+      <button class="req-toggle" id="reqToggle" type="button">➕ Request to add an event</button>
+      <div class="req" id="reqPanel">
+        <h4>Request an event</h4>
+        <div class="sub">Fill this out and Liz gets an email. If she approves, it shows up on the calendar.</div>
+        <div class="field">
+          <label for="rq-title">What's the event?</label>
+          <input type="text" id="rq-title" placeholder="e.g. Jack's soccer game">
+        </div>
+        <div class="two">
+          <div class="field">
+            <label for="rq-date">Date</label>
+            <input type="date" id="rq-date">
+          </div>
+          <div class="field">
+            <label for="rq-time">Time</label>
+            <input type="text" id="rq-time" placeholder="e.g. 3:00 PM">
+          </div>
+        </div>
+        <div class="field">
+          <label for="rq-by">Your name</label>
+          <input type="text" id="rq-by" placeholder="Who's requesting this?">
+        </div>
+        <div class="field">
+          <label for="rq-notes">Anything else? (optional)</label>
+          <textarea id="rq-notes" placeholder="Location, details, etc."></textarea>
+        </div>
+        <button class="submit" id="rq-send" type="button">Send request to Liz</button>
+        <div class="note" id="rq-note"></div>
+      </div>
     </div>
 
   </div>
@@ -173,6 +224,29 @@ helpToggle.addEventListener('click', ()=>{
 /* ─────────────────────────────────────────────────────────────
    CALENDAR ENGINE  (ported from the family calendar)
    ───────────────────────────────────────────────────────────── */
+/* Backend endpoint for event requests + approved-events feed.
+   Paste your Google Apps Script Web App URL here after setup (see SETUP.md). */
+const REQUEST_ENDPOINT = "PASTE_WEB_APP_URL_HERE";
+
+/* approved requests, keyed "y-m-d" (month is 1-based), filled by the feed */
+const APPROVED = {};
+window.__calFeed = function(rows){
+  (rows||[]).forEach(function(r){
+    if(!r || !r.date) return;
+    const p = String(r.date).split('-');
+    if(p.length<3) return;
+    const key = parseInt(p[0],10)+'-'+parseInt(p[1],10)+'-'+parseInt(p[2],10);
+    const label = "📌 "+(r.title||'Event') + (r.time? " ("+r.time+")":"") + (r.by? " — req. by "+r.by:"");
+    (APPROVED[key] = APPROVED[key] || []).push(label);
+  });
+};
+function loadApproved(){
+  if(!REQUEST_ENDPOINT || REQUEST_ENDPOINT.indexOf('http')!==0) return;
+  const s=document.createElement('script');
+  s.src = REQUEST_ENDPOINT + (REQUEST_ENDPOINT.indexOf('?')>=0?'&':'?') + "feed=events&callback=__calFeed";
+  s.onerror=function(){}; document.body.appendChild(s);
+}
+
 const CYCLE_START = new Date(2026,4,6);
 const ON_SET = new Set([0,1,2,8,9,10,11,14,15]);
 function isWork(y,m,d){ const dt=new Date(y,m,d); const diff=Math.round((dt-CYCLE_START)/86400000); return ON_SET.has(((diff%21)+21)%21); }
@@ -227,6 +301,7 @@ function getEvents(y,m,d){
   const sk=`${y}-${m+1}-${d}`;
   if(SCHOOL_OFF[sk]) labels.push(SCHOOL_OFF[sk]);
   if(CONFERENCES[sk]) labels.push(CONFERENCES[sk]);
+  if(APPROVED[sk]) APPROVED[sk].forEach(l=>labels.push(l));
   return labels;
 }
 
@@ -346,7 +421,7 @@ function answerForDate(dt, mode){
   }
 
   const items=[];
-  items.push({cls: marcWorks?'work':'off', html: marcWorks?"👔 <b>Marc is on shift</b> (M Work)":"🏡 <b>Marc is off</b>"});
+  items.push({cls: marcWorks?'work':'off', html: marcWorks?"👨‍⚕️ <b>Marc is on shift</b> (M Work)":"🏡 <b>Marc is off</b>"});
   events.forEach(ev=> items.push({cls:'', html: ev}));
   if(dow===3 && !isWeekend) items.push({cls:'', html:"🤸 Gymnastics @ 4:30"});
   if(!isWeekend) items.push({cls:'', html:"🎓 "+school.note});
@@ -424,7 +499,7 @@ function thisWeekend(ref){ // upcoming Sat + Sun
 }
 function dayEntries(dt){
   const y=dt.getFullYear(),m=dt.getMonth(),d=dt.getDate();
-  const arr=[ isWork(y,m,d)?"👔 Marc works":"🏡 Marc off" ];
+  const arr=[ isWork(y,m,d)?"👨‍⚕️ Marc works":"🏡 Marc off" ];
   getEvents(y,m,d).forEach(e=>arr.push(e));
   if(dt.getDay()===3) arr.push("🤸 Gymnastics 4:30");
   const s=schoolStatus(dt);
@@ -727,6 +802,53 @@ EXAMPLES.forEach(x=>{
   c.addEventListener('click', ()=>{ document.getElementById('q').value=x; respond(x); });
   exWrap.appendChild(c);
 });
+
+/* ─────────────────────────────────────────────────────────────
+   REQUEST AN EVENT  → emails Liz via the backend
+   ───────────────────────────────────────────────────────────── */
+const reqToggle=document.getElementById('reqToggle');
+// hide the request feature until the backend endpoint is configured
+if(!REQUEST_ENDPOINT || REQUEST_ENDPOINT.indexOf('http')!==0){
+  reqToggle.style.display='none';
+}
+reqToggle.addEventListener('click', ()=>{
+  const r=document.getElementById('reqPanel');
+  const open=r.style.display==='block';
+  r.style.display=open?'none':'block';
+  reqToggle.textContent = open ? '➕ Request to add an event' : '✕ Close request form';
+  if(!open) document.getElementById('rq-title').focus();
+});
+
+function reqNote(msg, cls){
+  const n=document.getElementById('rq-note');
+  n.textContent=msg; n.className='note'+(cls?' '+cls:'');
+}
+document.getElementById('rq-send').addEventListener('click', ()=>{
+  const title=document.getElementById('rq-title').value.trim();
+  const date =document.getElementById('rq-date').value.trim();
+  const time =document.getElementById('rq-time').value.trim();
+  const by   =document.getElementById('rq-by').value.trim();
+  const notes=document.getElementById('rq-notes').value.trim();
+  if(!title || !date || !by){ reqNote("Please add at least the event, date, and your name.", "bad"); return; }
+  if(!REQUEST_ENDPOINT || REQUEST_ENDPOINT.indexOf('http')!==0){
+    reqNote("The request form isn't connected yet — please try again later.", "bad"); return;
+  }
+  reqNote("Sending…", "");
+  fetch(REQUEST_ENDPOINT, {
+    method:'POST', mode:'no-cors',
+    headers:{'Content-Type':'application/x-www-form-urlencoded'},
+    body:new URLSearchParams({title,date,time,by,notes}).toString()
+  }).then(()=>{
+    reqNote("✅ Sent! Liz will get an email and decide. Thanks, "+(by.split(' ')[0]||'')+"!", "ok");
+    ['rq-title','rq-date','rq-time','rq-by','rq-notes'].forEach(id=>document.getElementById(id).value='');
+  }).catch(()=>{
+    // no-cors gives an opaque response; a network error is rare but handle it
+    reqNote("Couldn't reach the server. Check your connection and try again.", "bad");
+  });
+});
+
+/* pull in already-approved events so they show up in answers */
+loadApproved();
 </script>
 </body>
 </html>
