@@ -436,7 +436,7 @@
     function renderCalendar() {
       let out = '';
       for (let y = 2026; y <= 2027; y++) {
-        const ms = y === 2026 ? 6 : 0;
+        const ms = y === 2026 ? 7 : 0;
         for (let m = ms; m < 12; m++) out += buildMonth(y, m);
       }
       document.getElementById('app').innerHTML = out;
