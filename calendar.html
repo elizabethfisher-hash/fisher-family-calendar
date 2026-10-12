@@ -57,8 +57,9 @@
     .holiday.noschool { font-size: 8px; white-space: nowrap; }
     .event     { font-size: 10px; color: #222; margin-top: 1px; font-weight: normal; }
     .event.requested { color: #b5006e; background: #fde7f3; border-radius: 4px; padding: 1px 3px; display: inline-block; }
-    /* trip bar: lives in the first cell of each week it covers, overflows across the row */
-    .trip-space { position: relative; height: 16px; margin: 2px 0 1px; }
+    /* trip bar: sits along the bottom of the cells; lives in the first cell of each week it covers, overflows across the row */
+    .trip-space { position: absolute; bottom: 4px; left: 5px; right: 5px; height: 16px; }
+    td.has-trip .gym-wrap { bottom: 23px; }   /* lift Wednesday gymnastics above the bar */
     .trip-bar {
       position: absolute; top: 0; left: -2px; z-index: 2;
       height: 16px; line-height: 16px; padding: 0 6px; box-sizing: border-box;
@@ -508,7 +509,7 @@
           const gymHtml  = (isWed && !other)
             ? `<div class="gym-wrap">Gymnastics @ 4:30</div>` : '';
 
-          html += `<td>
+          html += `<td${tripCell ? ' class="has-trip"' : ''}>
             <span class="${numClass}">${dy}</span>${tripCell}${evtHtml}${workHtml}${confHtml}${gymHtml}
           </td>`;
         }
