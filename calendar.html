@@ -75,8 +75,19 @@
 
     @media print {
       body { background: white; }
-      .page { width: 100%; margin: 0; page-break-after: always; }
-      .cal-grid td { height: 96px; }
+      html, body { height: 100%; margin: 0; }
+      .page {
+        width: 100%; margin: 0; page-break-after: always;
+        height: 100%;
+        display: flex; flex-direction: column;
+      }
+      .calendar {
+        flex: 1 1 auto; min-height: 0;
+        display: flex; flex-direction: column;
+      }
+      /* banner + header stay at natural height; the grid grows to fill the page */
+      .cal-grid { flex: 1 1 auto; height: 100%; }
+      .cal-grid td { height: auto; }
     }
 
     @page { size: landscape; margin: 0.25in; }
@@ -165,6 +176,11 @@
       '2026-9-10': ["🏃 APEX Fun Run"],
       '2026-9-13': ["🥎 John Muir Softball Game 12:00"],
       '2026-9-14': ["💍 Our Anniversary"],
+      '2026-11-7': ["🎈 Emily's Birthday Party 1:00"],
+      '2026-11-26': ["🏔️ Truckee"],
+      '2026-11-27': ["🏔️ Truckee"],
+      '2026-11-28': ["🏔️ Truckee"],
+      '2026-11-29': ["🏔️ Truckee"],
     };
 
     // ── Holiday / event helpers ───────────────────────────────────────────────
@@ -393,8 +409,8 @@
       <span class="cal-month">${MONTH_NAMES[month]}</span>
     </div>
     <div class="cal-info">
-      Jack school schedule: M/T/Th/F 8:00-2:35 (Weds: 8:00-1:15)<br>
-      Emily school schedule: M/T/Th/F 8:00-2:30 (Weds: 8:00-1:10)
+      Jack school schedule: M/T/Th/F 8:00-2:35 (Weds: 8:00-1:20)<br>
+      Emily school schedule: M/T/Th/F 8:00-2:30 (Weds: 8:00-1:15)
     </div>
   </div>
   <table class="cal-grid"><tr>`;

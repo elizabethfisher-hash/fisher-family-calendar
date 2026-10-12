@@ -350,6 +350,11 @@ const CUSTOM = {
   '2026-9-10': ["🏃 APEX Fun Run"],
   '2026-9-13': ["🥎 John Muir Softball Game 12:00"],
   '2026-9-14': ["💍 Our Anniversary"],
+  '2026-11-7': ["🎈 Emily's Birthday Party 1:00"],
+  '2026-11-26': ["🏔️ Truckee"],
+  '2026-11-27': ["🏔️ Truckee"],
+  '2026-11-28': ["🏔️ Truckee"],
+  '2026-11-29': ["🏔️ Truckee"],
 };
 const FIXED = {
   '1-1':"🎆 No School - New Year's Day",'1-5':"🎂 Liz's Birthday",'2-14':"❤️ Valentine's Day",
@@ -392,8 +397,8 @@ function schoolStatus(dt){
   const closed=labels.find(l=>/No School|Recess/.test(l));
   if(closed) return {open:false, note:"No school ("+closed.replace(/^[^\w]+/,'').replace('No School - ','').trim()+")"};
   const conf=labels.find(l=>/Conferences/.test(l));
-  if(conf) return {open:true, note:"School — early release (conferences): Emily 1:10, Jack 1:15"};
-  if(dow===3) return {open:true, note:"School — early release (Wed): Emily 1:10, Jack 1:15"};
+  if(conf) return {open:true, note:"School — early release (conferences): Emily 1:15, Jack 1:20"};
+  if(dow===3) return {open:true, note:"School — early release (Wed): Emily 1:15, Jack 1:20"};
   return {open:true, note:"School — regular day: Emily until 2:30, Jack until 2:35"};
 }
 
