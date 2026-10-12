@@ -57,6 +57,17 @@
     .holiday.noschool { font-size: 8px; white-space: nowrap; }
     .event     { font-size: 10px; color: #222; margin-top: 1px; font-weight: normal; }
     .event.requested { color: #b5006e; background: #fde7f3; border-radius: 4px; padding: 1px 3px; display: inline-block; }
+    /* trip bar: lives in the first cell of each week it covers, overflows across the row */
+    .trip-space { position: relative; height: 16px; margin: 2px 0 1px; }
+    .trip-bar {
+      position: absolute; top: 0; left: -2px; z-index: 2;
+      height: 16px; line-height: 16px; padding: 0 6px; box-sizing: border-box;
+      background: #4AADAD; color: #fff; font-size: 10px; font-weight: 600;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      border-radius: 0;
+    }
+    .trip-bar.starts { border-top-left-radius: 8px; border-bottom-left-radius: 8px; }
+    .trip-bar.ends   { border-top-right-radius: 8px; border-bottom-right-radius: 8px; }
     .conf      { font-size: 10px; color: #222; margin-top: 1px; white-space: nowrap; }
     .m-work    { position: absolute; top: 4px; left: 0; right: 0; text-align: center; font-size: 10px; color: #0070C0; }
     .gym       { font-size: 10px; color: #222; margin-top: auto; padding-top: 6px; }
@@ -182,11 +193,12 @@
       '2026-11-19': ["🪔 Diwali Party 6-10p (GG babysit)"],
       '2026-11-21': ["🎤 Jonas Brothers w/ Kat"],
       '2026-11-23': ["🩺 M CPI Training 8-12"],
-      '2026-11-26': ["🏔️ Truckee"],
-      '2026-11-27': ["🏔️ Truckee"],
-      '2026-11-28': ["🏔️ Truckee"],
-      '2026-11-29': ["🏔️ Truckee"],
     };
+
+    // ── Vacations / multi-day trips (drawn as one bar across the dates) ──────
+    const TRIPS = [
+      { start: '2026-11-26', end: '2026-11-29', label: "🏔️ Truckee" },
+    ];
 
     // ── Holiday / event helpers ───────────────────────────────────────────────
     const FIXED = {
@@ -394,6 +406,38 @@
       return new Date(year, month + 1, 0).getDate();
     }
 
+    function tripOn(y, m, d) {
+      const t = new Date(y, m, d);
+      return TRIPS.find(tr => {
+        const [sy, sm, sd] = tr.start.split('-').map(Number);
+        const [ey, em, ed] = tr.end.split('-').map(Number);
+        return t >= new Date(sy, sm - 1, sd) && t <= new Date(ey, em - 1, ed);
+      });
+    }
+
+    function tripHtml(trip, y, m, d, col) {
+      if (!trip) return '';
+      const prev = new Date(y, m, d - 1), today = new Date(y, m, d);
+      const continues = col > 0 && tripOn(prev.getFullYear(), prev.getMonth(), prev.getDate()) === trip
+                        && prev.getMonth() === m;
+      if (continues) return `<div class="trip-space"></div>`;   // bar drawn from an earlier cell
+      // count days this bar covers in the current week row (and month)
+      let n = 0;
+      while (col + n < 7) {
+        const dt = new Date(y, m, d + n);
+        if (dt.getMonth() !== m || tripOn(dt.getFullYear(), dt.getMonth(), dt.getDate()) !== trip) break;
+        n++;
+      }
+      const last = new Date(y, m, d + n - 1);
+      const [sy, sm, sd] = trip.start.split('-').map(Number);
+      const [ey, em, ed] = trip.end.split('-').map(Number);
+      const cls = 'trip-bar'
+        + (today.getTime() === new Date(sy, sm - 1, sd).getTime() ? ' starts' : '')
+        + (last.getTime() === new Date(ey, em - 1, ed).getTime() ? ' ends' : '');
+      // each column = cell content width + 10px padding + 1px border
+      return `<div class="trip-space"><div class="${cls}" style="width:calc(${n} * (100% + 11px) - 7px)">${trip.label}</div></div>`;
+    }
+
     function buildMonth(year, month) {
       const firstDow    = new Date(year, month, 1).getDay(); // 0=Sun
       const dim         = daysInMonth(year, month);
@@ -458,11 +502,12 @@
           const confKey  = `${dy_year}-${dy_month+1}-${dy}`;
           const confHtml = (!other && CONFERENCES[confKey])
             ? `<div class="conf">${CONFERENCES[confKey]}</div>` : '';
+          const tripCell = other ? '' : tripHtml(tripOn(dy_year, dy_month, dy), dy_year, dy_month, dy, c);
           const gymHtml  = (isWed && !other)
             ? `<div class="gym-wrap">Gymnastics @ 4:30</div>` : '';
 
           html += `<td>
-            <span class="${numClass}">${dy}</span>${evtHtml}${workHtml}${confHtml}${gymHtml}
+            <span class="${numClass}">${dy}</span>${tripCell}${evtHtml}${workHtml}${confHtml}${gymHtml}
           </td>`;
         }
         html += `</tr>`;
