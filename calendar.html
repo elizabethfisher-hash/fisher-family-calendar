@@ -90,16 +90,19 @@
       html, body { height: 100%; margin: 0; }
       .page {
         width: 100%; margin: 0; page-break-after: always;
-        height: 100%;
+        height: 100vh; overflow: hidden;   /* exactly one printed page per month */
         display: flex; flex-direction: column;
       }
       .calendar {
         flex: 1 1 auto; min-height: 0;
         display: flex; flex-direction: column;
       }
-      /* banner + header stay at natural height; the grid grows to fill the page */
-      .cal-grid { flex: 1 1 auto; height: 100%; }
-      .cal-grid td { height: auto; }
+      /* banner + header stay at natural height; the grid box takes the rest of the page
+         and the table fills it (a table can't stretch its rows as a flex item itself) */
+      .grid-wrap { flex: 1 1 0; min-height: 0; }
+      .cal-grid { height: 100%; }
+      .cal-grid th { height: 1px; }      /* keep the weekday row short; day rows share the extra height */
+      .cal-grid td { height: 70px; }     /* same base for every week (taller than any day's text) so rows grow evenly */
     }
 
     @page { size: landscape; margin: 0.25in; }
@@ -472,7 +475,7 @@
       Emily school schedule: M/T/Th/F 8:00-2:30 (Weds: 8:00-1:15)
     </div>
   </div>
-  <table class="cal-grid"><tr>`;
+  <div class="grid-wrap"><table class="cal-grid"><tr>`;
 
       for (const d of DAY_NAMES) html += `<th>${d}</th>`;
       html += `</tr>`;
@@ -523,7 +526,7 @@
         html += `</tr>`;
       }
 
-      html += `</table></div></div>`;
+      html += `</table></div></div></div>`;
       return html;
     }
 
