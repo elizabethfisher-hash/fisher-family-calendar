@@ -335,10 +335,11 @@ const SCHOOL_OFF = {
   '2027-6-2':"🎉 Last Day of School",
 };
 const CONFERENCES = {
-  '2026-11-3':"📚 Conferences - Early Release",'2026-11-4':"📚 Conferences - Early Release",
-  '2026-11-5':"📚 Conferences - Early Release",'2026-11-6':"📚 Conferences - Early Release",
-  '2026-11-9':"📚 Conferences - Early Release",'2026-11-10':"📚 Conferences - Early Release",
-  '2026-11-12':"📚 Conferences - Early Release",'2026-11-13':"📚 Conferences - Early Release",
+  '2026-11-2':"📚 Conferences - Pickup 12:50",
+  '2026-11-3':"📚 Conferences - Pickup 12:50",'2026-11-4':"📚 Conferences - Pickup 12:50",
+  '2026-11-5':"📚 Conferences - Pickup 12:50",'2026-11-6':"📚 Conferences - Pickup 12:50",
+  '2026-11-9':"📚 Conferences - Pickup 12:50",'2026-11-10':"📚 Conferences - Pickup 12:50",
+  '2026-11-12':"📚 Conferences - Pickup 12:50",'2026-11-13':"📚 Conferences - Pickup 12:50",
 };
 const CUSTOM = {
   '2026-8-11': ["🎒 BTSN 5th Grade 5:30"],
@@ -352,7 +353,10 @@ const CUSTOM = {
   '2026-9-14': ["💍 Our Anniversary"],
   '2026-11-1': ["🕐 Daylight Saving Time Ends"],
   '2026-11-6': ["🍎 Jack Conference 2:15", "🍎 Emily Conference 2:45"],
-  '2026-11-7': ["🎈 Emily's Birthday Party 1:00"],
+  '2026-11-7': ["💎 Emily Ear Piercing (morning)", "🎈 Emily's Birthday Party 1:00"],
+  '2026-11-14': ["🎈 Zoe's Birthday Party 12:30"],
+  '2026-11-16': ["⚖️ Jack Weight Check 3:30"],
+  '2026-11-17': ["💻 Dr. Palmer Video 10:30"],
   '2026-11-19': ["🪔 Diwali Party 6-10p (GG babysit)"],
   '2026-11-23': ["🩺 M CPI Training 8-12"],
   '2026-11-26': ["🏔️ Truckee"],
@@ -413,7 +417,7 @@ function schoolStatus(dt){
   const closed=labels.find(l=>/No School|Recess/.test(l));
   if(closed) return {open:false, note:"No school ("+closed.replace(/^[^\w]+/,'').replace('No School - ','').trim()+")"};
   const conf=labels.find(l=>/Conferences/.test(l));
-  if(conf) return {open:true, note:"School — early release (conferences): Emily 1:15, Jack 1:20"};
+  if(conf) return {open:true, note:"School — early release (conferences): pickup 12:50"};
   if(dow===3) return {open:true, note:"School — early release (Wed): Emily 1:15, Jack 1:20"};
   return {open:true, note:"School — regular day: Emily until 2:30, Jack until 2:35"};
 }
